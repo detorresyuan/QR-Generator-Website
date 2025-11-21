@@ -29,7 +29,7 @@ class RandomYoutubeApp:                   # define the application class that ma
     def __init__(self, parentwindow):     # constructor runs when creating an instance of the class
         self.master = parentwindow        # store a reference to the Tkinter parent window
         # prefer environment variable, fallback to any hardcoded key if present
-        self.apiKey = os.getenv("YOUTUBE_API_KEY")  # get the API key from the environment variable
+        self.apiKey = os.getenv("YOUTUBE_API_KEY") or "AIzaSyAKBoXfwhSJh1YJuP2l2HuHAOwU04hBwjA" # get the API key from the environment variable
         if not self.apiKey:               # if the environment variable is not set
             messagebox.showerror("Configuration Error", 
                                 "API Key not found. Please set the 'YOUTUBE_API_KEY' environment variable.")  # notify user
@@ -53,7 +53,7 @@ class RandomYoutubeApp:                   # define the application class that ma
 
         # canvas sizes
         self.canvasH = 620                 # canvas (display area) height in pixels
-        self.canvasW = 1100                # canvas width in pixels
+        self.canvasW = 900                # canvas width in pixels
         # create a Canvas widget to display thumbnails and text
         self.mainCanvas = Canvas(parentwindow, height = self.canvasH, width = self.canvasW,
                             borderwidth = 2, bg = "#414141")
