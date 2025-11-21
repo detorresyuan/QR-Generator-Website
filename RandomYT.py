@@ -29,7 +29,7 @@ class RandomYoutubeApp:                   # define the application class that ma
     def __init__(self, parentwindow):     # constructor runs when creating an instance of the class
         self.master = parentwindow        # store a reference to the Tkinter parent window
         # prefer environment variable, fallback to any hardcoded key if present
-        self.apiKey = os.getenv("YOUTUBE_API_KEY") or "AIzaSyAKBoXfwhSJh1YJuP2l2HuHAOwU04hBwjA" # get the API key from the environment variable
+        self.apiKey = os.getenv("YOUTUBE_API_KEY") # get the API key from the environment variable
         if not self.apiKey:               # if the environment variable is not set
             messagebox.showerror("Configuration Error", 
                                 "API Key not found. Please set the 'YOUTUBE_API_KEY' environment variable.")  # notify user
