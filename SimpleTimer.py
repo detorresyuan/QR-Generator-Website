@@ -44,7 +44,7 @@ class SimpleTimer:
             return
         try:
             self.myTime = int(self.enterNumber.get())
-            self.startButton.config(state = "disabled", bg = self.startButtonColor)
+            self.mainCanvas.config(state = "disabled", bg = self.startButtonColor)
         except ValueError:
             print("That is not a valid number.")
             return
@@ -71,6 +71,7 @@ class SimpleTimer:
             self.countdown_id = None
         self.remaining_time = 0
         self.mainCanvas.delete("all")
+        self.mainCanvas.config(state = "normal", bg = self.resetButtonColor)
         self.startButton.config(state = "normal")
 
     def print(self, *args, **kwargs):
