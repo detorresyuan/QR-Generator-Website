@@ -1,6 +1,6 @@
 #  Group 2: Full-Stack QR Generator
 
-A sophisticated, secure, and high-performance QR code management system. This project serves as a comprehensive demonstration of integrating a **Python-based frontend (Streamlit)** with a **robust relational database (PostgreSQL)**, all optimized for the **Ubuntu 26.04 LTS** server environment.
+A sophisticated, secure, and high-performance QR code management system. This project serves as a comprehensive demonstration of integrating a **Python-based frontend (Streamlit)** with a **robust relational database (PostgreSQL)**, all optimized for the **Ubuntu 22.04.5 LTS** server environment.
 
 ###  Deployment Environment
 This application is designed and tested to run on **Ubuntu 26.04 LTS**, utilizing a high-performance stack for local or cloud-based server hosting.
