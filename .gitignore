@@ -1,0 +1,23 @@
+# 1. Exclude EVERYTHING
+*
+
+# 2. But re-include the .gitignore file itself
+!.gitignore
+
+# 3. Re-include the /Projects folder and all its contents
+!/Projects/
+
+# 4. EXPLICITLY IGNORE specific folders/files in the root if they still appear
+#    (e.g., development environments that Git shouldn't see at all)
+.venv/ 
+HELP/
+status/
+Tutorials/
+hmm.png
+niga.png
+uha.png
+uhh.png
+
+# 5. Re-include app.py
+!app.py
+
