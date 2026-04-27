@@ -13,4 +13,4 @@ print(f"Today I went to the {Adject1} zoo.")
 print(f"In an exhibit I saw a {Noun1} what the helly.")
 print(f"{Noun1} was {Adject2} and {Verb1}.")
 print(f"I was {Adject3}, so nigger! and there were {Amount} of them!")
-
+#test
