@@ -22,7 +22,7 @@ This application is designed and tested to run on **Ubuntu 26.04 LTS**, utilizin
 
 | Component | Technology |
 | :--- | :--- |
-| **Operating System** | **Ubuntu 26.04 LTS** |
+| **Operating System** | **Ubuntu 22.04.5 LTS** |
 | **Frontend Framework** | Streamlit |
 | **Primary Database** | PostgreSQL |
 | **Security/Hashing** | Bcrypt |
