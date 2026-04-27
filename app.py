@@ -14,32 +14,6 @@ from streamlit_lottie import st_lottie
 # ============================================================
 st.set_page_config(page_title="Group 2 QR Generator", page_icon=":cat_face:", layout="wide")
 
-# ============================================================
-# POSTGRESQL SETUP NOTES
-# Run these SQL statements in your PostgreSQL database once:
-#
-#   CREATE TABLE IF NOT EXISTS users (
-#       id SERIAL PRIMARY KEY,
-#       username VARCHAR(100) UNIQUE NOT NULL,
-#       password TEXT NOT NULL,
-#       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-#   );
-#
-#   CREATE TABLE IF NOT EXISTS qr_codes (
-#       id SERIAL PRIMARY KEY,
-#       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-#       name VARCHAR(200) NOT NULL,
-#       qr_data TEXT NOT NULL,
-#       qr_image TEXT NOT NULL,
-#       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-#   );
-#
-# The init_db() function below will also auto-create them on startup.
-# ============================================================
-
-# ============================================================
-# LOTTIE — cached so it only fetches once, not on every rerun
-# ============================================================
 @st.cache_data(show_spinner=False)
 def load_lottieurl(url: str):
     r = requests.get(url)
