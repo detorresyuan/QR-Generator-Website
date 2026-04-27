@@ -12,7 +12,19 @@ from streamlit_lottie import st_lottie
 # ============================================================
 # PAGE CONFIG
 # ============================================================
-st.set_page_config(page_title="Group 2 QR Generator", page_icon=":cat_face:", layout="wide")
+st.set_page_config(page_title="Group 2 QR Generator", page_icon=":material/qr_code:", layout="wide")
+
+# ── Inject Bootstrap Icons + polish ─────────────────────────
+st.markdown("""
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+>
+<style>
+  /* tighten icon spacing in markdown */
+  .bi { vertical-align: -0.125em; margin-right: 5px; }
+</style>
+""", unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=False)
 def load_lottieurl(url: str):
@@ -39,7 +51,6 @@ def get_connection():
 
 @st.cache_resource(show_spinner=False)
 def init_db():
-    """Auto-create tables on first startup. Cached so it only runs once."""
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -65,7 +76,7 @@ def init_db():
     conn.close()
     return True
 
-init_db()  # runs once per server session
+init_db()
 
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -127,7 +138,6 @@ def check_password_strength(password):
     return score, missing
 
 def strength_info(score):
-    """Returns (label, hex_color, percent)."""
     levels = [
         (0,  "No input",    "#cccccc",  0),
         (1,  "Very Weak",   "#e53935", 20),
@@ -156,14 +166,14 @@ def render_strength_bar(password):
     </div>
     """, unsafe_allow_html=True)
     if missing:
-        with st.expander("❗ Requirements not yet met", expanded=True):
+        with st.expander("Requirements not yet met", expanded=True, icon=":material/warning:"):
             for m in missing:
-                st.markdown(f"- ❌ {m}")
+                st.markdown(f'<i class="bi bi-x-circle-fill" style="color:#e53935;"></i> {m}', unsafe_allow_html=True)
     else:
-        st.markdown("✅ All password requirements met!")
+        st.markdown('<i class="bi bi-check-circle-fill" style="color:#2e7d32;"></i> **All password requirements met!**', unsafe_allow_html=True)
 
 # ============================================================
-# QR CODE GENERATION (in-memory — no temp file, faster)
+# QR CODE GENERATION
 # ============================================================
 def generate_qr_bytes(data: str) -> bytes:
     img = qrcode.make(data)
@@ -190,87 +200,89 @@ for _k, _v in _DEFAULTS.items():
 # ============================================================
 # SIDEBAR
 # ============================================================
-st.sidebar.title("🐱 Group 2 QR")
+st.sidebar.title("Group 2  QR")
 
 if not st.session_state["logged_in"]:
-    # ---- not logged in ----
     auth_choice = st.sidebar.selectbox("Go to", ["Login", "Signup"])
 
 else:
-    # ---- logged in ----
-    st.sidebar.markdown(f"👤 **{st.session_state['username']}**")
+    st.sidebar.markdown(
+        f'<i class="bi bi-person-circle"></i> **{st.session_state["username"]}**',
+        unsafe_allow_html=True,
+    )
     st.sidebar.write("---")
 
     nav = st.sidebar.radio(
         "Navigate",
-        ["🏠  Home", "📂  My QR Codes", "📜  History"],
+        ["Home", "My QR Codes", "History"],
         label_visibility="collapsed",
     )
 
-    # Map radio label → internal tab key
     _tab_map = {
-        "🏠  Home":       "Home",
-        "📂  My QR Codes": "MyQR",
-        "📜  History":    "History",
+        "Home":        "Home",
+        "My QR Codes": "MyQR",
+        "History":     "History",
     }
     if _tab_map[nav] != st.session_state["active_tab"]:
         st.session_state["active_tab"] = _tab_map[nav]
-        # reset pending QR when switching tabs
         st.session_state["show_save_ui"] = False
         st.session_state["qr_bytes"] = None
 
     st.sidebar.write("---")
 
-    # ---- mini history preview in sidebar ----
-    st.sidebar.markdown("**🕑 Recent QR Codes**")
+    # ── Mini history preview ─────────────────────────────────
+    st.sidebar.markdown(
+        '<i class="bi bi-clock-history"></i> **Recent QR Codes**',
+        unsafe_allow_html=True,
+    )
     _recent = get_user_qr_codes(st.session_state["username"])[:5]
     if _recent:
         for _, _name, _link, _, _ts in _recent:
             st.sidebar.markdown(
-                f"• **{_name}**  \n"
-                f"  <span style='font-size:0.75rem;color:gray;'>{_ts.strftime('%b %d, %Y')}</span>",
+                f'<i class="bi bi-qr-code" style="font-size:0.8rem;"></i> **{_name}**  \n'
+                f'<span style="font-size:0.75rem;color:gray;">{_ts.strftime("%b %d, %Y")}</span>',
                 unsafe_allow_html=True,
             )
     else:
         st.sidebar.caption("No QR codes saved yet.")
 
     st.sidebar.write("---")
-    if st.sidebar.button("🚪 Logout", use_container_width=True):
+    if st.sidebar.button("Logout", icon=":material/logout:", use_container_width=True):
         for _k, _v in _DEFAULTS.items():
             st.session_state[_k] = _v
         st.rerun()
 
-    auth_choice = None  # not on an auth page
+    auth_choice = None
 
 # ============================================================
-# AUTH PAGES  (only shown when not logged in)
+# AUTH PAGES
 # ============================================================
 if not st.session_state["logged_in"]:
 
     # ---- SIGNUP ----
     if auth_choice == "Signup":
-        st.subheader("Create New Account")
+        st.subheader("Create New Account", anchor=False)
 
         new_user = st.text_input("Username", key="su_user")
         new_pass = st.text_input("Password", type="password", key="su_pass")
 
-        # live password strength bar
         render_strength_bar(new_pass)
 
         confirm_pass = st.text_input("Confirm Password", type="password", key="su_confirm")
 
-        if st.button("Register", type="primary"):
+        if st.button("Register", type="primary", icon=":material/how_to_reg:"):
             score, missing = check_password_strength(new_pass)
             if not new_user.strip():
-                st.error("Please enter a username.")
+                st.error("Please enter a username.", icon=":material/error:")
             elif not new_pass:
-                st.error("Please enter a password.")
+                st.error("Please enter a password.", icon=":material/error:")
             elif score < 3:
                 st.error(
-                    "Password is too weak. Please satisfy at least 3 of the 5 requirements shown above."
+                    "Password is too weak. Please satisfy at least 3 of the 5 requirements shown above.",
+                    icon=":material/error:",
                 )
             elif new_pass != confirm_pass:
-                st.error("Passwords do not match.")
+                st.error("Passwords do not match.", icon=":material/error:")
             else:
                 try:
                     conn = get_connection()
@@ -283,18 +295,18 @@ if not st.session_state["logged_in"]:
                     conn.commit()
                     cur.close()
                     conn.close()
-                    st.success("✅ Account created! Please go to Login.")
+                    st.success("Account created! Please go to Login.", icon=":material/check_circle:")
                 except Exception as e:
-                    st.error(f"Database Error: {e}")
+                    st.error(f"Database Error: {e}", icon=":material/error:")
 
     # ---- LOGIN ----
     elif auth_choice == "Login":
-        st.subheader("Login to Access QR Generator")
+        st.subheader("Login to Access QR Generator", anchor=False)
 
         username = st.text_input("Username", key="li_user")
         password = st.text_input("Password", type="password", key="li_pass")
 
-        if st.button("Login", type="primary"):
+        if st.button("Login", type="primary", icon=":material/login:"):
             conn = get_connection()
             cur = conn.cursor()
             cur.execute("SELECT password FROM users WHERE username = %s", (username,))
@@ -308,13 +320,13 @@ if not st.session_state["logged_in"]:
                 st.session_state["active_tab"] = "Home"
                 st.rerun()
             else:
-                st.error("Invalid username or password.")
+                st.error("Invalid username or password.", icon=":material/error:")
 
     else:
-        st.warning("Please Login or Signup from the sidebar to access the QR Generator.")
+        st.warning("Please Login or Signup from the sidebar to access the QR Generator.", icon=":material/info:")
 
 # ============================================================
-# MAIN APP  (only shown when logged in)
+# MAIN APP
 # ============================================================
 else:
     tab = st.session_state["active_tab"]
@@ -323,60 +335,56 @@ else:
     # TAB: HOME
     # ===========================================================
     if tab == "Home":
-        # --- Hero ---
         with st.container():
-            st.subheader(f"Welcome back, {st.session_state['username']}! 🐱")
-            st.title("QR Code Generator")
+            st.subheader(f"Welcome back, {st.session_state['username']}!", anchor=False)
+            st.title("QR Code Generator", anchor=False)
             st.write(
-                "This is a group project that utilizes the power of Python using "
-                "Streamlit while also integrating PostgreSQL."
+                "A group project that utilizes the power of Python with "
+                "Streamlit while integrating PostgreSQL for persistent storage."
             )
             st.write("[Learn More >](https://www.youtube.com/watch?v=VqgUkExPvLY)")
 
-        # --- What is this section ---
         with st.container():
             st.write("---")
             left_col, right_col = st.columns(2)
             with left_col:
-                st.header("What is this?")
+                st.header("What is this?", anchor=False)
                 st.write("##")
                 st.write(
-                    "This is a QR Code generator that generates QR codes from any link "
-                    "you provide. It uses the power of Python and Streamlit to create a "
-                    "simple and easy-to-use interface for users to generate QR codes."
+                    "This is a QR Code generator that creates QR codes from any link "
+                    "you provide. It uses Python and Streamlit to create a simple, "
+                    "easy-to-use interface for generating and managing QR codes."
                 )
             with right_col:
                 st_lottie(lottie_coding, height=300, key="coding_anim")
 
-        # --- Generator Section ---
         with st.container():
             st.write("---")
-            st.title("Generate Your QR Code")
+            st.title("Generate Your QR Code", anchor=False)
 
             qr_name_input = st.text_input(
-                "📛 QR Code Name",
+                "QR Code Name",
                 placeholder="e.g. My GitHub Profile",
                 key="home_qr_name",
             )
             qr_link_input = st.text_input(
-                "🔗 Link / Text for QR Code",
+                "Link / Text for QR Code",
                 placeholder="https://example.com",
                 key="home_qr_link",
             )
 
-            if st.button("⚡ Generate QR Code", type="primary"):
+            if st.button("Generate QR Code", type="primary", icon=":material/qr_code_scanner:"):
                 if not qr_name_input.strip():
-                    st.warning("Please enter a name for your QR code.")
+                    st.warning("Please enter a name for your QR code.", icon=":material/warning:")
                 elif not qr_link_input.strip():
-                    st.warning("Please enter a link or text for the QR code.")
+                    st.warning("Please enter a link or text for the QR code.", icon=":material/warning:")
                 else:
-                    # Generate in-memory (fast — no disk I/O)
-                    st.session_state["qr_bytes"]    = generate_qr_bytes(qr_link_input.strip())
-                    st.session_state["qr_data_val"] = qr_link_input.strip()
-                    st.session_state["qr_name_val"] = qr_name_input.strip()
+                    st.session_state["qr_bytes"]     = generate_qr_bytes(qr_link_input.strip())
+                    st.session_state["qr_data_val"]  = qr_link_input.strip()
+                    st.session_state["qr_name_val"]  = qr_name_input.strip()
                     st.session_state["show_save_ui"] = True
 
-            # --- Save / Cancel UI ---
+            # ── Save / Cancel UI ─────────────────────────────
             if st.session_state["show_save_ui"] and st.session_state["qr_bytes"]:
                 st.write("---")
                 preview_col, action_col = st.columns([1, 2])
@@ -389,17 +397,21 @@ else:
                     )
 
                 with action_col:
-                    st.markdown(f"**Name:** {st.session_state['qr_name_val']}")
-                    st.markdown(f"**Link:** {st.session_state['qr_data_val']}")
+                    st.markdown(
+                        f'<i class="bi bi-tag"></i> **Name:** {st.session_state["qr_name_val"]}',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f'<i class="bi bi-link-45deg"></i> **Link:** {st.session_state["qr_data_val"]}',
+                        unsafe_allow_html=True,
+                    )
                     st.write("")
 
                     save_btn, cancel_btn = st.columns(2)
 
                     with save_btn:
-                        if st.button("💾 Save", type="primary", use_container_width=True):
-                            qr_b64 = base64.b64encode(
-                                st.session_state["qr_bytes"]
-                            ).decode()
+                        if st.button("Save", type="primary", icon=":material/save:", use_container_width=True):
+                            qr_b64 = base64.b64encode(st.session_state["qr_bytes"]).decode()
                             save_qr_to_db(
                                 st.session_state["username"],
                                 st.session_state["qr_name_val"],
@@ -407,9 +419,9 @@ else:
                                 qr_b64,
                             )
                             st.success(
-                                f"✅ QR Code **{st.session_state['qr_name_val']}** saved!"
+                                f'QR Code **{st.session_state["qr_name_val"]}** saved!',
+                                icon=":material/check_circle:",
                             )
-                            # reset state
                             st.session_state["show_save_ui"] = False
                             st.session_state["qr_bytes"]     = None
                             st.session_state["qr_data_val"]  = ""
@@ -417,7 +429,7 @@ else:
                             st.rerun()
 
                     with cancel_btn:
-                        if st.button("❌ Cancel", use_container_width=True):
+                        if st.button("Cancel", icon=":material/close:", use_container_width=True):
                             st.session_state["show_save_ui"] = False
                             st.session_state["qr_bytes"]     = None
                             st.session_state["qr_data_val"]  = ""
@@ -428,13 +440,13 @@ else:
     # TAB: MY QR CODES
     # ===========================================================
     elif tab == "MyQR":
-        st.title("📂 My QR Codes")
+        st.title("My QR Codes", anchor=False)
         st.write("---")
 
         qr_list = get_user_qr_codes(st.session_state["username"])
 
         if not qr_list:
-            st.info("You have no saved QR codes yet. Head to **🏠 Home** to generate one!")
+            st.info("You have no saved QR codes yet. Head to **Home** to generate one!", icon=":material/info:")
         else:
             st.markdown(f"**{len(qr_list)} QR code(s) saved**")
             st.write("")
@@ -447,23 +459,31 @@ else:
                         st.image(qr_bytes, use_container_width=True)
                         st.markdown(f"**{name}**")
                         short_link = qr_data if len(qr_data) <= 38 else qr_data[:35] + "…"
-                        st.caption(f"🔗 {short_link}")
-                        st.caption(f"📅 {created_at.strftime('%b %d, %Y  %H:%M')}")
+                        st.markdown(
+                            f'<i class="bi bi-link-45deg"></i> <span style="font-size:0.85rem;">{short_link}</span>',
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f'<i class="bi bi-calendar3"></i> <span style="font-size:0.8rem;color:gray;">{created_at.strftime("%b %d, %Y  %H:%M")}</span>',
+                            unsafe_allow_html=True,
+                        )
 
                         dl_col, del_col = st.columns(2)
                         with dl_col:
                             st.download_button(
-                                "⬇️ Download",
+                                "Download",
                                 data=qr_bytes,
                                 file_name=f"{name}.png",
                                 mime="image/png",
                                 use_container_width=True,
+                                icon=":material/download:",
                                 key=f"myqr_dl_{qr_id}",
                             )
                         with del_col:
                             if st.button(
-                                "🗑️ Delete",
+                                "Delete",
                                 key=f"myqr_del_{qr_id}",
+                                icon=":material/delete:",
                                 use_container_width=True,
                             ):
                                 delete_qr_from_db(qr_id)
@@ -473,13 +493,13 @@ else:
     # TAB: HISTORY
     # ===========================================================
     elif tab == "History":
-        st.title("📜 QR Code History")
+        st.title("QR Code History", anchor=False)
         st.write("---")
 
         qr_list = get_user_qr_codes(st.session_state["username"])
 
         if not qr_list:
-            st.info("No history yet. Generate your first QR code from **🏠 Home**!")
+            st.info("No history yet. Generate your first QR code from **Home**!", icon=":material/info:")
         else:
             st.markdown(f"**Total QR Codes Created: {len(qr_list)}**")
             st.write("")
@@ -487,31 +507,39 @@ else:
             for qr_id, name, qr_data, qr_img_b64, created_at in qr_list:
                 qr_bytes = base64.b64decode(qr_img_b64)
                 with st.expander(
-                    f"📌  {name}   —   {created_at.strftime('%B %d, %Y  %H:%M')}",
+                    f"{name}   —   {created_at.strftime('%B %d, %Y  %H:%M')}",
                     expanded=False,
+                    icon=":material/qr_code:",
                 ):
                     left, right = st.columns([1, 2])
                     with left:
                         st.image(qr_bytes, width=160)
                     with right:
                         st.markdown(f"**Name:** {name}")
-                        st.markdown(f"**Link / Text:** {qr_data}")
                         st.markdown(
-                            f"**Created:** {created_at.strftime('%B %d, %Y at %H:%M')}"
+                            f'<i class="bi bi-link-45deg"></i> **Link / Text:** {qr_data}',
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f'<i class="bi bi-calendar3"></i> **Created:** {created_at.strftime("%B %d, %Y at %H:%M")}',
+                            unsafe_allow_html=True,
                         )
                         st.write("")
                         dl2, del2 = st.columns(2)
                         with dl2:
                             st.download_button(
-                                "⬇️ Download",
+                                "Download",
                                 data=qr_bytes,
                                 file_name=f"{name}.png",
                                 mime="image/png",
+                                icon=":material/download:",
                                 key=f"hist_dl_{qr_id}",
                             )
                         with del2:
                             if st.button(
-                                "🗑️ Delete", key=f"hist_del_{qr_id}"
+                                "Delete",
+                                key=f"hist_del_{qr_id}",
+                                icon=":material/delete:",
                             ):
                                 delete_qr_from_db(qr_id)
                                 st.rerun()
