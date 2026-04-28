@@ -1,13 +1,13 @@
-#  Group 2: Full-Stack QR Generator
+# Group 2: Full-Stack QR Generator
 
 A sophisticated, secure, and high-performance QR code management system. This project serves as a comprehensive demonstration of integrating a **Python-based frontend (Streamlit)** with a **robust relational database (PostgreSQL)**, all optimized for the **Ubuntu 22.04.5 LTS** server environment.
 
-###  Deployment Environment
+### Deployment Environment
 This application is designed and tested to run on **Ubuntu 26.04 LTS**, utilizing a high-performance stack for local or cloud-based server hosting.
 
 ---
 
-##  Features
+## Features
 
 * **Secure User Lifecycle:** Fully implemented Signup and Login system using `bcrypt` for industry-standard password hashing.
 * **Dynamic QR Engine:** Generates high-fidelity QR codes in-memory for maximum speed, bypassing slow disk I/O.
@@ -18,7 +18,7 @@ This application is designed and tested to run on **Ubuntu 26.04 LTS**, utilizin
 
 ---
 
-##  Technical Stack
+## Technical Stack
 
 | Component | Technology |
 | :--- | :--- |
@@ -27,22 +27,25 @@ This application is designed and tested to run on **Ubuntu 26.04 LTS**, utilizin
 | **Primary Database** | PostgreSQL |
 | **Security/Hashing** | Bcrypt |
 | **QR Generation** | Python `qrcode` + `Pillow` |
-| **Asset Storage** | Base64 Encoding |
+| **Secure Tunneling** | **Ngrok** |
+| **Remote Management** | **SSH (Secure Shell)** |
 
 ---
 
-##  Architecture Overview
+## Architecture & Networking
 
 The application follows a modular architecture to ensure scalability and ease of maintenance:
 
-1.  **Authentication Layer:** Validates user credentials against hashed records before granting session access.
-2.  **Logic Layer:** Handles the translation of URLs or text into matricized QR data.
-3.  **Data Layer:** Manages relational links between users and their generated assets, ensuring that users only see their own history.
-4.  **Reverse Proxy:** Designed to be served via **Nginx** for stable, production-grade access.
+1. **Authentication Layer:** Validates user credentials against hashed records before granting session access.
+2. **Logic Layer:** Handles the translation of URLs or text into matricized QR data.
+3. **Data Layer:** Manages relational links between users and their generated assets, ensuring that users only see their own history.
+4. **Remote Management:** Managed via **SSH**, allowing for secure, encrypted terminal access to the Ubuntu host for configuration, updates, and maintenance.
+5. **External Access (Ingress):** Utilizes **Ngrok** to create a secure tunnel from the local server to the public web, providing a stable URL for users to access the application without complex firewall port forwarding.
 
 ---
 
-##  Contributors
+## Contributors
 * **Belarmino, Katrisha C.** — *System Architect*
 * **De Torres, Yuan Kendrix B.** — *Application Developer*
+
 > **Note:** This project was developed as a collaborative effort to bridge the gap between simple script-based tools and production-ready web applications.
