@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Group 2: Full-Stack QR Generator
 
 A sophisticated, secure, and high-performance QR code management system. This project serves as a comprehensive demonstration of integrating a **Python-based frontend (Streamlit)** with a **robust relational database (PostgreSQL)**, all optimized for the **Ubuntu 22.04.5 LTS** server environment.
@@ -49,3 +50,6 @@ The application follows a modular architecture to ensure scalability and ease of
 * **De Torres, Yuan Kendrix B.** — *Application Developer*
 
 > **Note:** This project was developed as a collaborative effort to bridge the gap between simple script-based tools and production-ready web applications.
+=======
+This is my projects repo and im a beninging
+>>>>>>> ebbf99cdbd3314230b9241f850768e6d09760276
