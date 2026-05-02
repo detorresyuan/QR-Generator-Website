@@ -25,6 +25,7 @@ This application is designed and tested to run on **Ubuntu 22.04.5 LTS**, utiliz
 | :--- | :--- |
 | **Operating System** | **Ubuntu 22.04.5 LTS** |
 | **Frontend Framework** | Streamlit |
+| **Styling & Layout** | **Custom CSS (Markdown Injection)** |
 | **Primary Database** | PostgreSQL |
 | **Security/Hashing** | Bcrypt |
 | **QR Generation** | Python `qrcode` + `Pillow` |
