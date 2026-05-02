@@ -7,7 +7,7 @@ import io
 import base64
 import re
 import time
-import html          # ← NEW: for XSS escaping
+import html         
 import os
 from datetime import datetime
 
@@ -84,21 +84,6 @@ QR_LOGO_SM = """
 </svg>"""
 
 
-# ═══════════════════════════════════════════════════════════════
-# FIX 1 ▸ CREDENTIALS — never hard-code secrets in source code
-#
-# Put these in  .streamlit/secrets.toml  (git-ignored):
-#
-#   [db]
-#   dbname   = "postgres"
-#   user     = "postgres"
-#   password = "your_password"
-#   host     = "localhost"
-#   port     = "5432"
-#
-# The file is loaded automatically by Streamlit and is NEVER
-# committed to version control.
-# ═══════════════════════════════════════════════════════════════
 def _db_cfg() -> dict:
     """
     Pull connection details from st.secrets (preferred) with a
@@ -156,20 +141,6 @@ def init_db():
         )
     """)
 
-    # ══════════════════════════════════════════════════════════════
-    # FIX 3 ▸ ROW LEVEL SECURITY (RLS)
-    #
-    # Without RLS, any DB user with SELECT on qr_codes can read
-    # every row — including other users' codes.
-    #
-    # The policy below ensures that a query run under a given
-    # "app_user" setting can only touch rows whose user_id matches
-    # the id stored in the current_setting('app.current_user_id').
-    #
-    # In get_connection() we call:
-    #   SET LOCAL app.current_user_id = '<id>';
-    # before every query, so the policy fires automatically.
-    # ══════════════════════════════════════════════════════════════
     cur.execute("ALTER TABLE qr_codes ENABLE ROW LEVEL SECURITY;")
 
     cur.execute("""
@@ -298,18 +269,6 @@ def load_lottieurl(url: str):
         return None
 
 
-# ═══════════════════════════════════════════════════════════════
-# FIX 2 ▸ XSS PREVENTION
-#
-# Streamlit renders st.markdown(..., unsafe_allow_html=True) as
-# raw HTML in the browser.  If user-controlled strings (names,
-# links, usernames) are interpolated directly, an attacker can
-# inject <script> tags or event handlers that execute in every
-# visitor's session.
-#
-# Fix: always call e() (html.escape) on every user-supplied
-# value before embedding it in an HTML template string.
-# ═══════════════════════════════════════════════════════════════
 def e(value) -> str:
     """
     Escape a value for safe embedding inside HTML.
@@ -318,18 +277,6 @@ def e(value) -> str:
     return html.escape(str(value), quote=True)
 
 
-# ═══════════════════════════════════════════════════════════════
-# FIX 4 ▸ RATE LIMITING
-#
-# Without rate limiting, an attacker can:
-#   • Brute-force passwords with thousands of requests/second
-#   • Spam account creation to pollute the database
-#   • Flood the QR generator to exhaust server resources
-#
-# Strategy: store per-action attempt timestamps in session_state.
-# After MAX_ATTEMPTS failures within WINDOW_SECONDS the action
-# is blocked for LOCKOUT_SECONDS.
-# ═══════════════════════════════════════════════════════════════
 _RATE_CFG = {
     "login":    {"max": 5,  "window": 60,  "lockout": 300},   # 5 tries / 60s → 5-min lockout
     "signup":   {"max": 3,  "window": 300, "lockout": 600},   # 3 tries / 5min → 10-min lockout
