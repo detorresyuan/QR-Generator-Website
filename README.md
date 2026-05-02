@@ -1,6 +1,7 @@
 # Group 2: Full-Stack QR Generator
 
 A sophisticated, secure, and high-performance QR code management system. This project serves as a comprehensive demonstration of integrating a **Python-based frontend (Streamlit)** with a **robust relational database (PostgreSQL)**, all optimized for the **Ubuntu 22.04.5 LTS** server environment.
+visit us on -> https://barometer-stuffy-avenue.ngrok-free.dev/
 
 ### Deployment & Remote Access
 This application is designed and tested to run on **Ubuntu 22.04.5 LTS**, utilizing a high-performance stack for local or cloud-based server hosting. Remote management is handled via **SSH**, and the application is exposed to the public internet using **ngrok** for secure, low-latency tunneling without complex firewall configurations.
