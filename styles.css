@@ -1,49 +1,19 @@
-/* ════════════════════════════════════════════════════════════
-   QR STUDIO — styles.css
-   Loaded at runtime by app.py via _load_css().
-   Edit this file freely; no Python restart needed on most
-   Streamlit dev setups (just trigger a rerun).
-   ════════════════════════════════════════════════════════════ */
-
-/* ── DESIGN TOKENS ─────────────────────────────────────────── */
-:root {
-  --bg-0:        #0d1117;
-  --bg-1:        #161b22;
-  --bg-2:        #1c2128;
-  --bg-3:        #22272e;
-  --bg-4:        #2d333b;
-  --border:      #30363d;
-  --border-2:    #444c56;
-  --tx-1:        #e6edf3;
-  --tx-2:        #8b949e;
-  --tx-3:        #6e7681;
-  --accent:      #f0883e;
-  --accent-h:    #f5a461;
-  --accent-d:    #c1610f;
-  --accent-bg:   rgba(240,136,62,.10);
-  --accent-ring: rgba(240,136,62,.20);
-  --red:         #f85149;
-  --green:       #3fb950;
-  --yellow:      #d29922;
-  --blue:        #58a6ff;
-  --r-xs:  6px;
-  --r-sm:  8px;
-  --r:     10px;
-  --r-lg:  14px;
-  --r-xl:  20px;
-  --shadow-sm:  0 1px 3px rgba(1,4,9,.60);
-  --shadow-md:  0 4px 16px rgba(1,4,9,.55);
-  --shadow-lg:  0 12px 40px rgba(1,4,9,.70);
-  --shadow-xl:  0 24px 64px rgba(1,4,9,.75);
-  --font-h:  'Playfair Display', Georgia, 'Times New Roman', serif;
-  --font-b:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-s:  'Times New Roman', Georgia, serif;
-  --ease:  cubic-bezier(.16,1,.3,1);
-  --t:     .16s;
-  --t-md:  .25s;
+:root{
+  --bg-0: #0d1117; --bg-1: #161b22; --bg-2: #1c2128;
+  --bg-3: #22272e; --bg-4: #2d333b; --border: #30363d;
+  --border-2: #444c56; --tx-1: #e6edf3; --tx-2: #8b949e;
+  --tx-3: #6e7681; --accent: #f0883e; --accent-h: #f5a461;
+  --accent-d: #c1610f; --accent-bg: rgba(240,136,62,.10);
+  --accent-ring: rgba(240,136,62,.20); --red: #f85149;
+  --green: #3fb950; --yellow: #d29922; --blue: #58a6ff;
+  --r-xs: 6px; --r-sm: 8px; --r: 10px; --r-lg: 14px; --r-xl: 20px;
+  --shadow-xl: 0 24px 64px rgba(1,4,9,.75);
+  --font-h: 'Playfair Display', Georgia, serif;
+  --font-b: 'Inter', sans-serif; --font-s: 'Times New Roman', serif;
+  --ease: cubic-bezier(.16,1,.3,1); --t: .16s; --t-md: .25s;
 }
 
-/* ── FORCE DARK THEME ──────────────────────────────────────── */
+
 .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
@@ -65,7 +35,7 @@ section[data-testid="stSidebar"] > div {
   border-right: 1px solid var(--border) !important;
 }
 
-/* ── TYPOGRAPHY ────────────────────────────────────────────── */
+
 body, .stApp { font-family: var(--font-b) !important; }
 
 .stApp h1 {
@@ -105,7 +75,7 @@ div[data-testid="stMarkdownContainer"] p {
   font-family: var(--font-b) !important;
 }
 
-/* ── INPUTS ────────────────────────────────────────────────── */
+
 .stTextInput > label {
   font-family: var(--font-b) !important;
   font-weight: 500 !important;
@@ -133,7 +103,7 @@ div[data-testid="stMarkdownContainer"] p {
 }
 .stTextInput > div > div > input::placeholder { color: var(--tx-3) !important; }
 
-/* ── SELECTBOX ─────────────────────────────────────────────── */
+
 .stSelectbox > div > div {
   background: var(--bg-2) !important;
   border: 1px solid var(--border) !important;
@@ -141,7 +111,7 @@ div[data-testid="stMarkdownContainer"] p {
   color: var(--tx-1) !important;
 }
 
-/* ── BUTTONS ───────────────────────────────────────────────── */
+
 .stButton > button {
   font-family: var(--font-b) !important;
   font-weight: 500 !important;
@@ -174,7 +144,7 @@ div[data-testid="stMarkdownContainer"] p {
   transform: translateY(-1px) !important;
 }
 
-/* ── DOWNLOAD BUTTON ───────────────────────────────────────── */
+
 .stDownloadButton > button {
   font-family: var(--font-b) !important;
   font-weight: 500 !important;
@@ -192,7 +162,7 @@ div[data-testid="stMarkdownContainer"] p {
   transform: translateY(-1px) !important;
 }
 
-/* ── AUTH FORM CARD ────────────────────────────────────────── */
+
 [data-testid="stForm"] {
   background: var(--bg-2) !important;
   border: 1px solid var(--border) !important;
@@ -201,7 +171,7 @@ div[data-testid="stMarkdownContainer"] p {
   box-shadow: var(--shadow-xl) !important;
 }
 
-/* ── BORDERED CONTAINERS ───────────────────────────────────── */
+
 div[data-testid="stVerticalBlockBorderWrapper"] > div {
   background: var(--bg-2) !important;
   border-radius: var(--r-lg) !important;
@@ -209,7 +179,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
   padding: 24px 28px !important;
 }
 
-/* ── EXPANDERS ─────────────────────────────────────────────── */
+
 [data-testid="stExpander"] {
   background: var(--bg-2) !important;
   border: 1px solid var(--border) !important;
@@ -225,7 +195,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
   color: var(--tx-1) !important;
 }
 
-/* ── SIDEBAR EXPANDERS ─────────────────────────────────────── */
+
 [data-testid="stSidebar"] [data-testid="stExpander"] {
   background: transparent !important;
   border: none !important;
@@ -286,7 +256,6 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
   white-space: nowrap !important;
 }
 
-/* ── SIDEBAR NAV BUTTONS ───────────────────────────────────── */
 [data-testid="stSidebar"] .stButton > button {
   background: transparent !important;
   border: none !important;
@@ -336,7 +305,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
   box-shadow: none !important;
 }
 
-/* ── ALERTS ────────────────────────────────────────────────── */
+
 .stAlert {
   border-radius: var(--r) !important;
   font-family: var(--font-b) !important;
@@ -345,33 +314,28 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
   border: 1px solid var(--border) !important;
 }
 
-/* ── DIVIDER ───────────────────────────────────────────────── */
 hr {
   border: none !important;
   border-top: 1px solid var(--border) !important;
   margin: 24px 0 !important;
 }
 
-/* ── IMAGE ─────────────────────────────────────────────────── */
 .stImage img {
   border-radius: var(--r) !important;
   border: 1px solid var(--border) !important;
 }
 
-/* ── CAPTION ───────────────────────────────────────────────── */
 .stCaption, [data-testid="stCaptionContainer"] {
   font-family: var(--font-b) !important;
   color: var(--tx-3) !important;
   font-size: .78rem !important;
 }
 
-/* ── SCROLLBAR ─────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
 
-/* ── ANIMATIONS ────────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0);   }
@@ -393,10 +357,6 @@ hr {
   50%       { opacity: .55; }
 }
 
-/* ════════════════════════════════════════════════════════════
-   CUSTOM COMPONENTS
-   ════════════════════════════════════════════════════════════ */
-
 .auth-wrap { animation: fadeUp .4s var(--ease) both; }
 .auth-logo { display: flex; justify-content: center; margin-bottom: 20px; animation: scaleIn .45s var(--ease) .05s both; }
 .auth-logo svg { filter: drop-shadow(0 8px 24px rgba(240,136,62,.35)); }
@@ -413,8 +373,8 @@ hr {
 
 .user-chip { display: flex; align-items: center; gap: 10px; background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 12px; margin-bottom: 14px; }
 .user-chip .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-d)); display: flex; align-items: center; justify-content: center; font-family: var(--font-b); font-weight: 700; font-size: .85rem; color: #fff; flex-shrink: 0; }
-.user-chip .uname { font-family: var(--font-b) !important; font-weight: 600; font-size: .84rem; color: var(--tx-1); line-height: 1.2; }
-.user-chip .urole { font-family: var(--font-b) !important; font-size: .7rem; color: var(--tx-3); }
+.user-chip .uname { font-family: var(--font-b) !important; font-weight: 600 !important; font-size: .84rem !important; color: var(--tx-1) !important; line-height: 1.2 !important; }
+.user-chip .urole { font-family: var(--font-b) !important; font-size: .7rem !important; color: var(--tx-3) !important; }
 
 .nav-section-lbl { font-family: var(--font-b); font-size: .68rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--tx-3); padding: 12px 2px 5px; }
 
@@ -470,14 +430,12 @@ hr {
 .page-header-title { font-family: var(--font-h) !important; font-size: 1.85rem !important; font-weight: 700 !important; color: var(--tx-1) !important; margin: 0 !important; letter-spacing: -.02em !important; }
 .page-header-sub { font-family: var(--font-s); color: var(--tx-2); font-size: .98rem; margin-top: 5px; line-height: 1.7; }
 
-/* ── HIDE STREAMLIT CHROME ───────────────────────────────── */
 #MainMenu { display: none !important; }
 footer    { display: none !important; }
 [data-testid="stDecoration"]              { display: none !important; }
 [data-testid="stSidebarCollapsedControl"] { display: none !important; }
 [data-testid="stSidebar"] button[kind="header"] { display: none !important; }
 
-/* ── MOBILE ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
   [data-testid="stForm"] { padding: 22px 16px !important; }
   .hero-title { font-size: 1.75rem !important; }
@@ -485,7 +443,7 @@ footer    { display: none !important; }
   .in-dev-title { font-size: 1.85rem !important; }
   .gen-card { padding: 18px 16px; }
   .auth-title { font-size: 1.6rem !important; }
-  .in-dev-wrap { min-height: 48vh; padding: 0 16px; }
+  .in-dev-wrap { min-height: 48vh; padding: 0 16px !important; }
   div[data-testid="stVerticalBlockBorderWrapper"] > div { padding: 18px 16px !important; }
   .page-header-title { font-size: 1.5rem !important; }
 }

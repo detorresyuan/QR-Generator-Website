@@ -28,19 +28,15 @@ st.set_page_config(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# CSS  — loaded from a separate file so this module stays clean
+# CSS
 # ═══════════════════════════════════════════════════════════════
 def _load_css() -> str:
-    """
-    Load styles.css from the same directory as this script.
-    Falls back gracefully if the file is missing.
-    """
     css_path = os.path.join(os.path.dirname(__file__), "styles.css")
     try:
         with open(css_path, encoding="utf-8") as fh:
             return fh.read()
     except FileNotFoundError:
-        return ""   # app still works, just unstyled
+        return ""
 
 GLOBAL_CSS_LINKS = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,8 +44,17 @@ GLOBAL_CSS_LINKS = """
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 """
-st.markdown(GLOBAL_CSS_LINKS + f"<style>{_load_css()}</style>", unsafe_allow_html=True)
 
+def _load_css() -> str:
+    css_path = os.path.join(os.path.dirname(__file__), "styles.css")
+    try:
+        with open(css_path, encoding="utf-8-sig") as fh:  # utf-8-sig strips hidden BOM
+            return fh.read()
+    except FileNotFoundError:
+        return ""
+
+st.markdown(GLOBAL_CSS_LINKS, unsafe_allow_html=True)
+st.markdown(f"<style>{_load_css()}</style>", unsafe_allow_html=True)
 # ── SVG assets ──────────────────────────────────────────────────────────────────
 QR_LOGO_SVG = """
 <svg width="64" height="64" viewBox="0 0 68 68" xmlns="http://www.w3.org/2000/svg">
@@ -99,7 +104,7 @@ def _db_cfg() -> dict:
             "host":     s["host"],
             "port":     str(s["port"]),
         }
-    except (KeyError, FileNotFoundError):
+    except Exception:
         # env-var fallback (e.g. Docker / CI)
         return {
             "dbname":   os.environ.get("DB_NAME",     "postgres"),
@@ -114,7 +119,10 @@ def _db_cfg() -> dict:
 # DATABASE LAYER
 # ═══════════════════════════════════════════════════════════════
 def get_connection():
-    return psycopg2.connect(**_db_cfg())
+    return psycopg2.connect(
+        dbname="postgres", user="postgres",
+        password="group2", host="localhost", port="5432",
+    )
 
 @st.cache_resource(show_spinner=False)
 def init_db():
