@@ -23,7 +23,7 @@ This application is designed and tested to run on **Ubuntu 22.04.5 LTS**, utiliz
 
 | Component | Technology |
 | :--- | :--- |
-| **Operating System** | **Ubuntu 22.04.5 LTS** |
+| **Server Operating System** | **Ubuntu 22.04.5 LTS** |
 | **Frontend Framework** | Streamlit |
 | **Styling & Layout** | **Custom CSS (Markdown Injection)** |
 | **Primary Database** | PostgreSQL |
