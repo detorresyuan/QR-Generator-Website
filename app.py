@@ -443,7 +443,7 @@ def render_sidebar():
             {QR_LOGO_SM}
             <div>
                 <div class="brand-name">QR Studio</div>
-                <div class="brand-sub">Group 2 · 2025</div>
+                <div class="brand-sub">Group 2 · 2026</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
