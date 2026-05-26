@@ -48,13 +48,14 @@ GLOBAL_CSS_LINKS = """
 def _load_css() -> str:
     css_path = os.path.join(os.path.dirname(__file__), "styles.css")
     try:
-        with open(css_path, encoding="utf-8-sig") as fh:  # utf-8-sig strips hidden BOM
+        with open(css_path, encoding="utf-8-sig") as fh:
             return fh.read()
     except FileNotFoundError:
         return ""
 
 st.markdown(GLOBAL_CSS_LINKS, unsafe_allow_html=True)
 st.markdown(f"<style>{_load_css()}</style>", unsafe_allow_html=True)
+
 # ── SVG assets ──────────────────────────────────────────────────────────────────
 QR_LOGO_SVG = """
 <svg width="64" height="64" viewBox="0 0 68 68" xmlns="http://www.w3.org/2000/svg">
@@ -90,11 +91,6 @@ QR_LOGO_SM = """
 
 
 def _db_cfg() -> dict:
-    """
-    Pull connection details from st.secrets (preferred) with a
-    fallback to environment variables so the app still works in
-    non-Streamlit runners such as pytest or Docker.
-    """
     try:
         s = st.secrets["db"]
         return {
@@ -105,7 +101,6 @@ def _db_cfg() -> dict:
             "port":     str(s["port"]),
         }
     except Exception:
-        # env-var fallback (e.g. Docker / CI)
         return {
             "dbname":   os.environ.get("DB_NAME",     "postgres"),
             "user":     os.environ.get("DB_USER",     "postgres"),
@@ -129,7 +124,6 @@ def init_db():
     conn = get_connection()
     cur  = conn.cursor()
 
-    # ── Core tables ──────────────────────────────────────────────────────────
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id         SERIAL PRIMARY KEY,
@@ -146,6 +140,20 @@ def init_db():
             qr_data    TEXT NOT NULL,
             qr_image   TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # ── PhotoQR table ────────────────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS photo_qr (
+            id           SERIAL PRIMARY KEY,
+            user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            photo_data   TEXT    NOT NULL,
+            caption      VARCHAR(300) DEFAULT '',
+            visibility   VARCHAR(10)  DEFAULT 'public'
+                             CHECK (visibility IN ('public','private')),
+            pin_hash     TEXT    DEFAULT NULL,
+            created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -176,30 +184,24 @@ def init_db():
 init_db()
 
 
-# ── Authenticated connection: sets the RLS context variable ────────────────────
+# ── Authenticated connection ────────────────────────────────────────────────────
 def get_authed_connection(user_id: int):
-    """
-    Returns a connection with app.current_user_id set so that
-    the RLS policy on qr_codes is scoped to this user only.
-    """
     conn = get_connection()
     cur  = conn.cursor()
-    # SET LOCAL scopes the variable to the current transaction
     cur.execute("SET LOCAL app.current_user_id = %s;", (user_id,))
     cur.close()
     return conn
 
 
-# ── QR list with 30-second TTL cache ───────────────────────────────────────────
+# ── QR list cache ───────────────────────────────────────────────────────────────
 @st.cache_data(ttl=30, show_spinner=False)
 def _fetch_qr_codes(user_id: int):
-    """Fetch via an authed connection so RLS is active."""
     conn = get_authed_connection(user_id)
     cur  = conn.cursor()
     cur.execute("""
         SELECT id, name, qr_data, qr_image, created_at
         FROM qr_codes
-        WHERE user_id = %s          -- belt-and-suspenders alongside RLS
+        WHERE user_id = %s
         ORDER BY created_at DESC
     """, (user_id,))
     rows = cur.fetchall()
@@ -224,10 +226,6 @@ def save_qr_to_db(user_id: int, name: str, qr_data: str, qr_image_b64: str):
     _bust_cache()
 
 def delete_qr_from_db(qr_id: int, user_id: int):
-    """
-    Always pass user_id so the WHERE clause is explicit even if
-    the RLS policy were ever disabled during maintenance.
-    """
     conn = get_authed_connection(user_id)
     cur  = conn.cursor()
     cur.execute(
@@ -239,6 +237,78 @@ def delete_qr_from_db(qr_id: int, user_id: int):
     _bust_cache()
 
 
+# ── PhotoQR DB helpers ──────────────────────────────────────────────────────────
+def get_base_url() -> str:
+    """Auto-detect current ngrok public URL."""
+    try:
+        r = requests.get("http://localhost:4040/api/tunnels", timeout=2)
+        tunnels = r.json().get("tunnels", [])
+        for t in tunnels:
+            if t.get("proto") == "https":
+                return t["public_url"].rstrip("/")
+        if tunnels:
+            return tunnels[0]["public_url"].rstrip("/")
+    except Exception:
+        pass
+    return "http://localhost:8501"
+
+
+def save_photo_qr_to_db(user_id: int, photo_b64: str, caption: str,
+                         visibility: str, pin: str = "") -> int:
+    pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode() if pin else None
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO photo_qr (user_id, photo_data, caption, visibility, pin_hash)
+           VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+        (user_id, photo_b64, caption.strip(), visibility, pin_hash),
+    )
+    new_id = cur.fetchone()[0]
+    conn.commit(); cur.close(); conn.close()
+    return new_id
+
+
+def get_photo_qr(photo_id: int):
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute(
+        """SELECT p.id, p.user_id, p.photo_data, p.caption,
+                  p.visibility, p.pin_hash, p.created_at, u.username
+           FROM photo_qr p
+           JOIN users u ON u.id = p.user_id
+           WHERE p.id = %s""",
+        (photo_id,),
+    )
+    row = cur.fetchone(); cur.close(); conn.close()
+    return row
+
+
+def get_user_photo_qrs(user_id: int):
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute(
+        """SELECT id, caption, visibility, created_at
+           FROM photo_qr WHERE user_id = %s
+           ORDER BY created_at DESC""",
+        (user_id,),
+    )
+    rows = cur.fetchall(); cur.close(); conn.close()
+    return rows
+
+
+def delete_photo_qr_from_db(photo_id: int, user_id: int):
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM photo_qr WHERE id = %s AND user_id = %s",
+        (photo_id, user_id),
+    )
+    conn.commit(); cur.close(); conn.close()
+
+
+def verify_photo_pin(pin: str, pin_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(pin.encode(), pin_hash.encode())
+    except Exception:
+        return False
+
+
 # ── Auth helpers ────────────────────────────────────────────────────────────────
 def hash_password(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
@@ -247,7 +317,6 @@ def verify_password(pw: str, hashed: str) -> bool:
     return bcrypt.checkpw(pw.encode(), hashed.encode())
 
 def lookup_user(username: str):
-    """Returns (id, hashed_password) or None."""
     conn = get_connection(); cur = conn.cursor()
     cur.execute(
         "SELECT id, password FROM users WHERE username = %s",
@@ -258,7 +327,7 @@ def lookup_user(username: str):
     return row
 
 
-# ── QR generation (content-addressed cache — same URL → same PNG) ───────────────
+# ── QR generation ───────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
 def generate_qr_bytes(data: str) -> bytes:
     img = qrcode.make(data)
@@ -278,58 +347,41 @@ def load_lottieurl(url: str):
 
 
 def e(value) -> str:
-    """
-    Escape a value for safe embedding inside HTML.
-    Converts  <  >  "  '  &  to their HTML entities.
-    """
     return html.escape(str(value), quote=True)
 
 
+# ── Rate limiting ───────────────────────────────────────────────────────────────
 _RATE_CFG = {
-    "login":    {"max": 5,  "window": 60,  "lockout": 300},   # 5 tries / 60s → 5-min lockout
-    "signup":   {"max": 3,  "window": 300, "lockout": 600},   # 3 tries / 5min → 10-min lockout
-    "generate": {"max": 20, "window": 60,  "lockout": 30},    # 20 generates / 60s → 30s cooldown
+    "login":    {"max": 5,  "window": 60,  "lockout": 300},
+    "signup":   {"max": 3,  "window": 300, "lockout": 600},
+    "generate": {"max": 20, "window": 60,  "lockout": 30},
 }
 
 def _rate_key(action: str) -> str:
     return f"_rl_{action}"
 
 def is_rate_limited(action: str) -> tuple[bool, int]:
-    """
-    Returns (blocked: bool, seconds_remaining: int).
-    Call this before executing the action.
-    """
     cfg  = _RATE_CFG[action]
     key  = _rate_key(action)
     now  = time.time()
-
     if key not in st.session_state:
         st.session_state[key] = {"attempts": [], "locked_until": 0}
-
     rl = st.session_state[key]
-
-    # Still in lockout?
     if now < rl["locked_until"]:
         return True, int(rl["locked_until"] - now)
-
-    # Prune attempts outside the window
     rl["attempts"] = [t for t in rl["attempts"] if now - t < cfg["window"]]
-
     if len(rl["attempts"]) >= cfg["max"]:
         rl["locked_until"] = now + cfg["lockout"]
         return True, cfg["lockout"]
-
     return False, 0
 
 def record_attempt(action: str):
-    """Call this every time the user triggers the action (success or fail)."""
     key = _rate_key(action)
     if key not in st.session_state:
         st.session_state[key] = {"attempts": [], "locked_until": 0}
     st.session_state[key]["attempts"].append(time.time())
 
 def clear_attempts(action: str):
-    """Call on successful login/signup to reset the counter."""
     key = _rate_key(action)
     st.session_state[key] = {"attempts": [], "locked_until": 0}
 
@@ -394,7 +446,6 @@ def render_strength_bar(password: str, db_key: str = "pw"):
         )
 
 
-# ── Input debounce helper ───────────────────────────────────────────────────────
 def _debounce_input(key: str, value: str, delay: float = 0.45) -> bool:
     now          = time.time()
     val_key      = f"_dbi_v_{key}"
@@ -414,7 +465,7 @@ def _debounce_input(key: str, value: str, delay: float = 0.45) -> bool:
 _DEFAULTS = {
     "logged_in":    False,
     "username":     "",
-    "user_id":      None,   # ← stored so we never re-query it
+    "user_id":      None,
     "active_tab":   "Home",
     "auth_mode":    "Login",
     "qr_bytes":     None,
@@ -431,6 +482,133 @@ def _clear_preview():
     st.session_state["qr_bytes"]     = None
     st.session_state["qr_data_val"]  = ""
     st.session_state["qr_name_val"]  = ""
+
+
+# ═══════════════════════════════════════════════════════════════
+# PHOTO VIEWER  — handles ?view=<id> for scanned QR codes
+# Works for everyone: logged-in users AND anonymous visitors
+# ═══════════════════════════════════════════════════════════════
+def render_photo_viewer(photo_id: int):
+    row = get_photo_qr(photo_id)
+
+    if not row:
+        st.markdown("""
+        <div class="empty-state">
+            <i class="bi bi-exclamation-triangle empty-icon" style="color:var(--red);"></i>
+            <h3 style="color:var(--tx-2);font-family:var(--font-b);font-weight:600;">
+                Photo Not Found
+            </h3>
+            <p class="empty-text">
+                This QR code may have been deleted or the link is invalid.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+
+    _id, owner_id, photo_b64, caption, visibility, pin_hash, created_at, username = row
+
+    vis_icon  = "bi-globe2"    if visibility == "public" else "bi-lock-fill"
+    vis_color = "var(--green)" if visibility == "public" else "var(--accent)"
+
+    st.markdown(f"""
+    <div class="page-header">
+        <div class="page-header-title">PhotoQR Viewer</div>
+        <div class="page-header-sub">
+            <i class="bi {vis_icon}" style="color:{vis_color};margin-right:4px;"></i>
+            {"Public" if visibility == "public" else "Private"} photo
+            shared by <strong>{e(username)}</strong>
+            &nbsp;·&nbsp; {e(created_at.strftime("%b %d, %Y"))}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("---")
+
+    # ── Private: PIN gate ──────────────────────────────────────────────────────
+    if visibility == "private":
+        unlock_key = f"_pqr_unlocked_{_id}"
+        if not st.session_state.get(unlock_key, False):
+            st.markdown("""
+            <div style="max-width:360px;margin:0 auto;text-align:center;padding:40px 0;">
+                <i class="bi bi-lock-fill"
+                   style="font-size:2.8rem;color:var(--accent);display:block;margin-bottom:18px;"></i>
+                <div style="font-family:var(--font-h);font-size:1.5rem;
+                            font-weight:700;color:var(--tx-1);margin-bottom:8px;">
+                    Private Photo
+                </div>
+                <p style="font-family:var(--font-b);color:var(--tx-2);
+                           font-size:.9rem;margin-bottom:24px;">
+                    Enter the PIN provided by the owner to view this photo.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            _, pin_col, _ = st.columns([1, 2, 1])
+            with pin_col:
+                with st.container(border=True):
+                    entered_pin = st.text_input(
+                        "PIN", type="password",
+                        placeholder="Enter PIN…",
+                        key=f"pin_input_{_id}",
+                    )
+                    if st.button("Unlock Photo", type="primary",
+                                 use_container_width=True, key=f"pin_btn_{_id}"):
+                        if verify_photo_pin(entered_pin, pin_hash):
+                            st.session_state[unlock_key] = True
+                            st.rerun()
+                        else:
+                            st.error("Incorrect PIN. Please try again.")
+            return
+
+    # ── Show photo ─────────────────────────────────────────────────────────────
+    try:
+        img_bytes = base64.b64decode(photo_b64)
+    except Exception:
+        st.error("Could not decode the photo. It may be corrupted.")
+        return
+
+    _, img_col, _ = st.columns([1, 2, 1])
+    with img_col:
+        with st.container(border=True):
+            initial = e(username[0].upper())
+            st.markdown(f"""
+            <div class="user-chip" style="margin-bottom:14px;">
+                <div class="avatar">{initial}</div>
+                <div>
+                    <div class="uname">{e(username)}</div>
+                    <div class="urole">
+                        Photo shared on {e(created_at.strftime("%B %d, %Y"))}
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.image(img_bytes, use_container_width=True)
+
+            if caption:
+                st.markdown(f"""
+                <div class="meta-block" style="margin-top:12px;">
+                    <div class="meta-label">Caption</div>
+                    <div class="meta-val">{e(caption)}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.download_button(
+                "⬇ Download Photo",
+                data=img_bytes,
+                file_name=f"photoqr_{_id}.jpg",
+                mime="image/jpeg",
+                use_container_width=True,
+                key=f"viewer_dl_{_id}",
+            )
+
+    st.markdown("---")
+    _, back_col, _ = st.columns([1, 2, 1])
+    with back_col:
+        if st.button("← Back to QR Studio", use_container_width=True, key="viewer_back"):
+            st.query_params.clear()
+            if st.session_state.get("logged_in"):
+                st.session_state["active_tab"] = "PhotoQR"
+            st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -451,7 +629,6 @@ def render_sidebar():
         if not st.session_state["logged_in"]:
             return
 
-        # ── User chip — e() prevents XSS via crafted usernames ────────────────
         initial = e(st.session_state["username"][0].upper())
         uname   = e(st.session_state["username"])
         st.markdown(f"""
@@ -510,8 +687,6 @@ def render_sidebar():
                     st.session_state[k] = v
                 st.rerun()
 
-render_sidebar()
-
 
 # ═══════════════════════════════════════════════════════════════
 # AUTH PAGES
@@ -545,12 +720,9 @@ def render_login():
             )
 
         if submitted:
-            # ── Rate-limit check ───────────────────────────────────────────────
             blocked, secs = is_rate_limited("login")
             if blocked:
-                st.error(
-                    f"Too many failed attempts. Please wait {secs} seconds before trying again."
-                )
+                st.error(f"Too many failed attempts. Please wait {secs} seconds before trying again.")
             elif not username.strip() or not password:
                 st.error("Please enter your username and password.")
             else:
@@ -603,12 +775,9 @@ def render_signup():
             reg_btn  = st.button("Create Account", type="primary", use_container_width=True)
 
         if reg_btn:
-            # ── Rate-limit check ───────────────────────────────────────────────
             blocked, secs = is_rate_limited("signup")
             if blocked:
-                st.error(
-                    f"Too many registration attempts. Please wait {secs} seconds."
-                )
+                st.error(f"Too many registration attempts. Please wait {secs} seconds.")
             else:
                 score, _ = check_password_strength(new_pass or "")
                 if not new_user.strip():
@@ -616,9 +785,7 @@ def render_signup():
                 elif not new_pass:
                     st.error("Please enter a password.")
                 elif score < 3:
-                    st.error(
-                        "Password is too weak — please meet at least 3 of the 5 requirements."
-                    )
+                    st.error("Password is too weak — please meet at least 3 of the 5 requirements.")
                 elif new_pass != confirm:
                     st.error("Passwords do not match.")
                 else:
@@ -639,7 +806,6 @@ def render_signup():
                         if "unique" in str(ex).lower():
                             st.error("That username is already taken.")
                         else:
-                            # Don't expose raw DB error messages to the user
                             st.error("Registration failed. Please try again.")
 
         st.markdown(
@@ -731,7 +897,6 @@ def render_home():
     st.markdown("</div>", unsafe_allow_html=True)
 
     if gen_btn:
-        # ── Rate-limit QR generation ───────────────────────────────────────────
         blocked, secs = is_rate_limited("generate")
         if blocked:
             st.warning(f"Slow down — too many generations. Wait {secs}s.")
@@ -759,7 +924,6 @@ def render_home():
                 )
 
             with act_col:
-                # e() escapes name and data before they touch the DOM
                 st.markdown(f"""
                 <div class="meta-block">
                     <div class="meta-label">Name</div>
@@ -829,7 +993,6 @@ def render_my_qr():
         with cols[idx % 3]:
             with st.container(border=True):
                 st.image(qr_bytes, use_container_width=True)
-                # ── e() prevents <script> inside name/link from executing ──────
                 st.markdown(f"""
                 <div class="qr-card-meta">
                     <div class="qr-name">{e(name)}</div>
@@ -930,40 +1093,295 @@ def render_history():
                         st.rerun()
 
 
+# ═══════════════════════════════════════════════════════════════
+# PHOTO QR PAGE
+# ═══════════════════════════════════════════════════════════════
 def render_photo_qr():
     st.markdown("""
     <div class="page-header" style="padding-bottom:8px;">
         <div class="page-header-title">PhotoQR</div>
         <div class="page-header-sub">
-            Embed QR codes directly into your photos and images.
+            Capture a photo and turn it into a shareable QR code.
         </div>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
 
-    st.markdown("""
-    <div class="in-dev-wrap">
-        <i class="bi bi-camera in-dev-icon"></i>
-        <div class="in-dev-badge">In Development</div>
-        <div class="in-dev-title">PhotoQR</div>
-        <p class="in-dev-desc">
-            PhotoQR will let you embed QR codes directly into photos and images —
-            beautiful, scannable, and seamlessly integrated into any picture.
-            Something great is coming. Stay tuned.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    tab_create, tab_mine = st.tabs(["📷  Capture & Create", "🖼  My Photo QRs"])
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TAB 1 — CAPTURE & CREATE
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_create:
+        left_col, right_col = st.columns([1, 1], gap="large")
+
+        with left_col:
+            st.markdown("""
+            <div class="meta-block">
+                <div class="meta-label">
+                    <i class="bi bi-camera-fill" style="color:var(--accent);"></i>
+                    &nbsp;Step 1 — Take a Photo
+                </div>
+                <div class="meta-val-sm">
+                    Allow camera access when prompted.
+                    Works on phones, tablets, and laptops with a webcam.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            cam_shot = st.camera_input(
+                "Take a photo",
+                key="pqr_camera",
+                label_visibility="collapsed",
+            )
+
+            # ── No-camera / no-internet error hints ───────────────────────────
+            st.markdown("""
+            <div style="margin-top:10px;">
+                <p style="font-family:var(--font-b);font-size:.78rem;color:var(--tx-3);">
+                    <i class="bi bi-info-circle" style="margin-right:4px;"></i>
+                    If no camera appears: check that your browser has camera
+                    permission, or try Chrome / Safari. A stable internet
+                    connection is required for the QR viewer link to work.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with right_col:
+            st.markdown("""
+            <div class="meta-block">
+                <div class="meta-label">
+                    <i class="bi bi-sliders" style="color:var(--accent);"></i>
+                    &nbsp;Step 2 — Configure &amp; Save
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            with st.container(border=True):
+                caption_val = st.text_input(
+                    "Caption (optional)",
+                    placeholder="e.g. My vacation photo",
+                    key="pqr_caption",
+                )
+
+                visibility_val = st.radio(
+                    "Visibility",
+                    options=["public", "private"],
+                    format_func=lambda x: (
+                        "🌐  Public — anyone with the QR can view"
+                        if x == "public" else
+                        "🔒  Private — requires a PIN to view"
+                    ),
+                    key="pqr_visibility",
+                )
+
+                pin_val  = ""
+                pin_val2 = ""
+                if visibility_val == "private":
+                    st.markdown("""
+                    <div class="meta-block" style="margin-top:8px;">
+                        <div class="meta-label">Set a PIN for this photo</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    pin_val  = st.text_input(
+                        "PIN", type="password",
+                        placeholder="4–12 characters",
+                        key="pqr_pin",
+                    )
+                    pin_val2 = st.text_input(
+                        "Confirm PIN", type="password",
+                        placeholder="Re-enter PIN",
+                        key="pqr_pin2",
+                    )
+
+                st.write("")
+                create_btn = st.button(
+                    "Generate PhotoQR",
+                    type="primary",
+                    use_container_width=True,
+                    key="pqr_create_btn",
+                )
+
+            # ── Validation + save ──────────────────────────────────────────────
+            if create_btn:
+                if cam_shot is None:
+                    st.warning("Please take a photo first using the camera on the left.")
+                elif visibility_val == "private" and not pin_val:
+                    st.warning("Please set a PIN for your private photo.")
+                elif visibility_val == "private" and pin_val != pin_val2:
+                    st.error("PINs do not match. Please re-enter.")
+                elif visibility_val == "private" and (len(pin_val) < 4 or len(pin_val) > 12):
+                    st.warning("PIN must be between 4 and 12 characters.")
+                else:
+                    with st.spinner("Generating your PhotoQR…"):
+                        img_bytes = cam_shot.getvalue()
+                        photo_b64 = base64.b64encode(img_bytes).decode()
+
+                        new_id = save_photo_qr_to_db(
+                            user_id    = st.session_state["user_id"],
+                            photo_b64  = photo_b64,
+                            caption    = caption_val,
+                            visibility = visibility_val,
+                            pin        = pin_val if visibility_val == "private" else "",
+                        )
+
+                        base_url   = get_base_url()
+                        viewer_url = f"{base_url}/?view={new_id}"
+
+                        qr_img = qrcode.make(viewer_url)
+                        qr_buf = io.BytesIO()
+                        qr_img.save(qr_buf, format="PNG")
+                        qr_bytes = qr_buf.getvalue()
+                        qr_b64   = base64.b64encode(qr_bytes).decode()
+
+                        save_qr_to_db(
+                            user_id      = st.session_state["user_id"],
+                            name         = f"PhotoQR — {caption_val or 'Untitled'}",
+                            qr_data      = viewer_url,
+                            qr_image_b64 = qr_b64,
+                        )
+
+                    st.success("PhotoQR created and saved!")
+                    st.markdown("---")
+
+                    res_l, res_r = st.columns([1, 1], gap="large")
+                    with res_l:
+                        st.markdown("""
+                        <div class="meta-block">
+                            <div class="meta-label">Your QR Code</div>
+                            <div class="meta-val-sm">Scan this to view the photo</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.image(qr_bytes, width=220)
+                        st.download_button(
+                            "⬇ Download QR Code",
+                            data=qr_bytes,
+                            file_name=f"photoqr_{new_id}.png",
+                            mime="image/png",
+                            key=f"dl_new_qr_{new_id}",
+                        )
+
+                    with res_r:
+                        vis_icon  = "bi-globe2"    if visibility_val == "public" else "bi-lock-fill"
+                        vis_color = "var(--green)"  if visibility_val == "public" else "var(--accent)"
+                        st.markdown(f"""
+                        <div class="meta-block">
+                            <div class="meta-label">Viewer Link</div>
+                            <div class="meta-val-sm" style="word-break:break-all;">
+                                {e(viewer_url)}
+                            </div>
+                        </div>
+                        <div class="meta-block" style="margin-top:14px;">
+                            <div class="meta-label">Visibility</div>
+                            <div class="meta-val">
+                                <i class="bi {vis_icon}"
+                                   style="color:{vis_color};margin-right:6px;"></i>
+                                {e(visibility_val.capitalize())}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        if visibility_val == "private":
+                            st.info(
+                                "Share your PIN separately with people "
+                                "you want to give access to."
+                            )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TAB 2 — MY PHOTO QRs
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_mine:
+        photos   = get_user_photo_qrs(st.session_state["user_id"])
+        base_url = get_base_url()
+
+        if not photos:
+            st.markdown("""
+            <div class="empty-state">
+                <i class="bi bi-camera empty-icon"></i>
+                <h3 style="color:var(--tx-2);font-family:var(--font-b);font-weight:600;">
+                    No PhotoQRs yet
+                </h3>
+                <p class="empty-text">
+                    Go to <strong>Capture &amp; Create</strong> to make your first one.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            cols = st.columns(3)
+            for idx, (pid, caption, visibility, created_at) in enumerate(photos):
+                viewer_url = f"{base_url}/?view={pid}"
+                qr_img     = qrcode.make(viewer_url)
+                qr_buf     = io.BytesIO()
+                qr_img.save(qr_buf, format="PNG")
+                qr_bytes   = qr_buf.getvalue()
+
+                vis_icon  = "bi-globe2"    if visibility == "public" else "bi-lock-fill"
+                vis_color = "var(--green)" if visibility == "public" else "var(--accent)"
+
+                with cols[idx % 3]:
+                    with st.container(border=True):
+                        st.image(qr_bytes, use_container_width=True)
+                        st.markdown(f"""
+                        <div class="qr-card-meta">
+                            <div class="qr-name">
+                                {e(caption) if caption else "<em>Untitled</em>"}
+                            </div>
+                            <div class="qr-link">
+                                <i class="bi {vis_icon}"
+                                   style="color:{vis_color};"></i>
+                                &nbsp;{e(visibility.capitalize())}
+                            </div>
+                            <div class="qr-date">
+                                <i class="bi bi-calendar3"></i>
+                                {e(created_at.strftime("%b %d, %Y  %H:%M"))}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.write("")
+
+                        dl_c, view_c, del_c = st.columns(3)
+                        with dl_c:
+                            st.download_button(
+                                "QR",
+                                data=qr_bytes,
+                                file_name=f"photoqr_{pid}.png",
+                                mime="image/png",
+                                use_container_width=True,
+                                key=f"pqr_dl_{pid}",
+                            )
+                        with view_c:
+                            if st.button("View", key=f"pqr_view_{pid}",
+                                         use_container_width=True):
+                                st.query_params["view"] = str(pid)
+                                st.rerun()
+                        with del_c:
+                            if st.button("Del", key=f"pqr_del_{pid}",
+                                         use_container_width=True):
+                                delete_photo_qr_from_db(pid, st.session_state["user_id"])
+                                st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════
-# ROUTING
+# ROUTING  —  handles ?view= param AND normal navigation
 # ═══════════════════════════════════════════════════════════════
-if not st.session_state["logged_in"]:
+params   = st.query_params
+view_id  = params.get("view", None)
+
+# ── Photo viewer: accessible to everyone, no login required ────────────────────
+if view_id is not None:
+    try:
+        render_sidebar()
+        render_photo_viewer(int(view_id))
+    except (ValueError, TypeError):
+        st.error("Invalid photo link.")
+
+# ── Normal app flow ─────────────────────────────────────────────────────────────
+elif not st.session_state["logged_in"]:
     if st.session_state["auth_mode"] == "Signup":
         render_signup()
     else:
         render_login()
 else:
+    render_sidebar()
     _tab = st.session_state["active_tab"]
     if   _tab == "Home":    render_home()
     elif _tab == "MyQR":    render_my_qr()
