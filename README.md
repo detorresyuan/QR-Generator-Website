@@ -19,6 +19,33 @@ This application is designed and tested to run on **Ubuntu 22.04.5 LTS**, utiliz
 
 ---
 
+## Security Architecture & Measures
+
+To ensure enterprise-grade data protection and system resilience, the application implements a multi-layered security framework covering authentication, rate limiting, database integrity, and input sanitization:
+
+### 1. Authentication & Password Hardening
+* **Cryptographic Hashing:** All user passwords and sensitive credentials are encrypted using `bcrypt` via the `hash_password` and `verify_password` routines before database commit.
+* **Strict Policy Enforcement:** Password registration mandates a minimum strength score of 3/5, enforcing requirements for at least 8 characters, uppercase letters, lowercase letters, numbers, and special characters.
+* **Real-time Feedback:** A live visual password strength meter provides active feedback to users during the signup phase to promote strong credential habits.
+
+### 2. Advanced Rate Limiting & Lockout Mechanisms
+The system prevents brute-force and Denial-of-Service (DoS) vectors using specialized, time-windowed rate limit buckets:
+* **Login Bucket:** Restricted to a maximum of 5 attempts per 60 seconds.
+* **Signup Bucket:** Restricted to a maximum of 3 attempts per 300 seconds.
+* **Generation Bucket:** Restricted to a maximum of 20 QR generation attempts per 60 seconds.
+* **Escalating Lockouts:** Violations trigger an exponential, persistent cooling-off schedule: `1 min → 2 min → 5 min → 15 min → 30 min → 1 hr`. The lockout counter persists across the session state, meaning subsequent violations compound the penalty duration.
+
+### 3. Database Isolation & Privacy Controls
+* **Row-Level Security (RLS):** Enabled natively on the PostgreSQL `qr_codes` table and enforced via the `app.current_user_id` session variable. 
+* **Defense-in-Depth Query Filtering:** All user data transactions undergo a secondary layer of filtering by `user_id` at the application logic tier, guaranteeing total tenant isolation.
+* **Cascade Deletions:** Structured with `ON DELETE CASCADE` foreign key constraints, ensuring that deleting a user account entirely purges all associated metadata and assets from the database.
+* **PhotoQR Privacy Gating:** Users can secure physical or image-based QR codes behind a custom PIN. These PINs are cryptographically hashed using `bcrypt` and verified strictly via `bcrypt.checkpw()`.
+
+### 4. Injection & Output Safety
+* **Cross-Site Scripting (XSS) Mitigation:** All user-supplied strings are aggressively escaped using the `html.escape()` wrapper function (`e()` helper) prior to rendering within Streamlit's `unsafe_allow_html` injection points.
+
+---
+
 ## Technical Stack
 
 | Component | Technology |
@@ -26,7 +53,7 @@ This application is designed and tested to run on **Ubuntu 22.04.5 LTS**, utiliz
 | **Server Operating System** | **Ubuntu 22.04.5 LTS** |
 | **Frontend Framework** | Streamlit |
 | **Styling & Layout** | **Custom CSS (Markdown Injection)** |
-| **Primary Database** | PostgreSQL |
+| **Primary Database** | PostgreSQL (with Native RLS) |
 | **Security/Hashing** | Bcrypt |
 | **QR Generation** | Python `qrcode` + `Pillow` |
 | **Asset Storage** | Base64 Encoding |
