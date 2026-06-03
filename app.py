@@ -932,6 +932,8 @@ html,body {{
 /* ── Scene & flip mechanics ─────────── */
 .qcrd-scene {{
     perspective:1400px;
+    -webkit-perspective:1400px;
+    perspective-origin:center center;
     width:{w}px; min-width:{w}px; min-height:{h}px; height:{h}px;
     margin:32px auto 12px;
 }}
@@ -940,30 +942,33 @@ html,body {{
     width:100%; height:100%;
     position:relative;
     transform-style:preserve-3d;
-    transition:transform .72s cubic-bezier(.4,.2,.2,1);
+    -webkit-transform-style:preserve-3d;
+    transition:transform .72s cubic-bezier(.4,.2,.2,1), box-shadow .3s ease;
     cursor:pointer;
-}}
-.qcrd-card:hover:not(.flipped) {{
-    transform:translateY(-12px) rotateX(4deg) rotateY(2deg);
+    will-change:transform;
+    box-shadow:0 18px 40px rgba(0,0,0,.28);
 }}
 .qcrd-card.flipped {{
     transform:rotateY(180deg);
 }}
 .qcrd-card.flipped:hover {{
+    box-shadow:0 30px 60px rgba(0,0,0,.32);
     transform:rotateY(180deg) translateY(-12px) rotateX(4deg);
 }}
 .qcrd-face {{
     position:absolute; inset:0;
     backface-visibility:hidden;
     -webkit-backface-visibility:hidden;
-    transform-style:preserve-3d;
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
     border-radius:18px; overflow:hidden;
     border:1px solid rgba(255,255,255,.07);
-    box-shadow:0 18px 40px rgba(0,0,0,.28);
     transition:box-shadow .3s ease;
+    transform-origin:center center;
 }}
-.qcrd-card:hover .qcrd-face {{
+.qcrd-card:hover:not(.flipped) {{
     box-shadow:0 30px 60px rgba(0,0,0,.32);
+    transform:translateY(-12px) rotateX(4deg) rotateY(2deg);
 }}
 /* ── FRONT ──────────────────────────── */
 .qcrd-front {{ transform:rotateY(0deg); {front_bg_css} position:relative; }}
@@ -1817,15 +1822,23 @@ def render_photo_qr():
         </div>""", unsafe_allow_html=True)
 
         cam_shot = st.camera_input("Take a photo", key="pqr_camera", label_visibility="collapsed")
+        uploaded_photo = None
+        if cam_shot is None:
+            st.markdown("<div style='margin-top:12px; color:rgba(255,255,255,.7);'>No camera input detected. You can also upload an existing photo below.</div>", unsafe_allow_html=True)
+            uploaded_photo = st.file_uploader(
+                "Upload a photo instead", type=["jpg","jpeg","png"],
+                key="pqr_photo_upload", label_visibility="collapsed",
+            )
 
-        if cam_shot is not None:
+        photo_file = cam_shot if cam_shot is not None else uploaded_photo
+        if photo_file is not None:
             st.markdown("""
             <div style="margin-top:8px;padding:9px 14px;background:rgba(240,136,62,.08);
                         border:1px solid rgba(240,136,62,.22);border-radius:8px;
                         display:flex;align-items:center;gap:8px;">
                 <i class="bi bi-check-circle-fill" style="color:var(--green);font-size:1rem;flex-shrink:0;"></i>
                 <span style="font-family:var(--font-b);font-size:.8rem;color:var(--tx-2);">
-                    Photo captured! Click the circular button again to retake.
+                    Photo ready! You can retake or upload a different one.
                 </span>
             </div>""", unsafe_allow_html=True)
 
@@ -1852,8 +1865,8 @@ def render_photo_qr():
             create_btn = st.button("Generate PhotoQR", type="primary", width='stretch', key="pqr_create_btn")
 
         if create_btn:
-            if cam_shot is None:
-                st.warning("Please take a photo first.")
+            if photo_file is None:
+                st.warning("Please take or upload a photo first.")
             elif visibility_val == "private" and not pin_val:
                 st.warning("Please set a PIN for your private photo.")
             elif visibility_val == "private" and pin_val != pin_val2:
@@ -1862,7 +1875,7 @@ def render_photo_qr():
                 st.warning("PIN must be between 4 and 12 characters.")
             else:
                 with st.spinner("Generating your PhotoQR…"):
-                    photo_b64 = base64.b64encode(cam_shot.getvalue()).decode()
+                    photo_b64 = base64.b64encode(photo_file.getvalue()).decode()
                     new_id    = save_photo_qr_to_db(
                         st.session_state["user_id"], photo_b64, caption_val,
                         visibility_val, pin_val if visibility_val=="private" else "",
