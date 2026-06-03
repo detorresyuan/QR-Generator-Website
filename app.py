@@ -932,6 +932,8 @@ html,body {{
 /* ── Scene & flip mechanics ─────────── */
 .qcrd-scene {{
     perspective:1400px;
+    -webkit-perspective:1400px;
+    perspective-origin:center center;
     width:{w}px; min-width:{w}px; min-height:{h}px; height:{h}px;
     margin:32px auto 12px;
 }}
@@ -940,30 +942,33 @@ html,body {{
     width:100%; height:100%;
     position:relative;
     transform-style:preserve-3d;
-    transition:transform .72s cubic-bezier(.4,.2,.2,1);
+    -webkit-transform-style:preserve-3d;
+    transition:transform .72s cubic-bezier(.4,.2,.2,1), box-shadow .3s ease;
     cursor:pointer;
-}}
-.qcrd-card:hover:not(.flipped) {{
-    transform:translateY(-12px) rotateX(4deg) rotateY(2deg);
+    will-change:transform;
+    box-shadow:0 18px 40px rgba(0,0,0,.28);
 }}
 .qcrd-card.flipped {{
     transform:rotateY(180deg);
 }}
 .qcrd-card.flipped:hover {{
+    box-shadow:0 30px 60px rgba(0,0,0,.32);
     transform:rotateY(180deg) translateY(-12px) rotateX(4deg);
 }}
 .qcrd-face {{
     position:absolute; inset:0;
     backface-visibility:hidden;
     -webkit-backface-visibility:hidden;
-    transform-style:preserve-3d;
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
     border-radius:18px; overflow:hidden;
     border:1px solid rgba(255,255,255,.07);
-    box-shadow:0 18px 40px rgba(0,0,0,.28);
     transition:box-shadow .3s ease;
+    transform-origin:center center;
 }}
-.qcrd-card:hover .qcrd-face {{
+.qcrd-card:hover:not(.flipped) {{
     box-shadow:0 30px 60px rgba(0,0,0,.32);
+    transform:translateY(-12px) rotateX(4deg) rotateY(2deg);
 }}
 /* ── FRONT ──────────────────────────── */
 .qcrd-front {{ transform:rotateY(0deg); {front_bg_css} position:relative; }}
