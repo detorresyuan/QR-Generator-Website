@@ -461,7 +461,8 @@ hr {
 
 .auth-wrap { animation: fadeUp .4s var(--ease) both; }
 .auth-logo { display: flex; justify-content: center; margin-bottom: 20px; animation: scaleIn .45s var(--ease) .05s both; }
-.auth-logo svg { filter: drop-shadow(0 8px 24px rgba(240,136,62,.35)); }
+.auth-logo svg,
+.auth-logo img { filter: drop-shadow(0 8px 24px rgba(240,136,62,.35)); }
 .auth-title { font-family: var(--font-h) !important; font-weight: 700 !important; font-size: 1.9rem !important; color: var(--tx-1) !important; text-align: center; margin: 0 0 4px !important; letter-spacing: -.02em !important; animation: fadeUp .4s var(--ease) .1s both; }
 .auth-tagline { font-family: var(--font-h) !important; font-style: italic !important; color: var(--tx-3) !important; text-align: center; font-size: .93rem !important; margin: 0 0 26px !important; animation: fadeUp .4s var(--ease) .15s both; }
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
