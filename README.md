@@ -1,6 +1,6 @@
 # Group 2: Full-Stack QR Generator
 
-A sophisticated, secure, and high-performance QR code management system. This project serves as a comprehensive demonstration of integrating a **Python-based frontend (Streamlit)** with a **robust relational database (PostgreSQL)**, all optimized for the **Ubuntu 22.04.5 LTS** server environment.
+A sophisticated, secure, and high-performance QR code management system. This project serves as a comprehensive demonstration of integrating a **Python-based frontend (Streamlit)** with a **robust relational database (PostgreSQL)**, all optimized for the **Ubuntu 22.04.5 LTS** server environment. 
 visit us on -> https://barometer-stuffy-avenue.ngrok-free.dev/
 
 ### Deployment & Remote Access
@@ -12,10 +12,12 @@ This application is designed and tested to run on **Ubuntu 22.04.5 LTS**, utiliz
 
 * **Secure User Lifecycle:** Fully implemented Signup and Login system using `bcrypt` for industry-standard password hashing.
 * **Dynamic QR Engine:** Generates high-fidelity QR codes in-memory for maximum speed, bypassing slow disk I/O.
+* **QcaRd (Digital Business Cards):** Design and generate fully customizable digital business cards (including profile/background photos, social links, and custom accent colors). Share them instantly via a dedicated QR code, allow scanners to download your details directly as a `.vcf` file, and track engagement with real-time scan analytics.
+* **PhotoQR:** Turn any uploaded photo or camera capture into a shareable QR code. Secure private photos behind a cryptographically hashed PIN.
 * **Intelligent Validation:** A real-time, interactive password strength meter to ensure user security compliance.
 * **Persistent Storage:** Full CRUD (Create, Read, Delete) capabilities for QR codes, with images stored as Base64 strings within PostgreSQL.
 * **Modern UI/UX:** Features a sleek, responsive interface with **Lottie animations** and a mobile-friendly layout.
-* **Asset Management:** A dedicated "My QR Codes" dashboard allowing users to view history and download codes as `.png` files.
+* **Asset Management:** A dedicated "My QR Codes" and "History" dashboard allowing users to view logs and download codes as `.png` files.
 
 ---
 
@@ -24,7 +26,7 @@ This application is designed and tested to run on **Ubuntu 22.04.5 LTS**, utiliz
 To ensure enterprise-grade data protection and system resilience, the application implements a multi-layered security framework covering authentication, rate limiting, database integrity, and input sanitization:
 
 ### 1. Authentication & Password Hardening
-* **Cryptographic Hashing:** All user passwords and sensitive credentials are encrypted using `bcrypt` via the `hash_password` and `verify_password` routines before database commit.
+* **Cryptographic Hashing:** All user passwords, private photo PINs, and sensitive credentials are encrypted using `bcrypt` via the `hash_password` and `verify_password` routines before database commit.
 * **Strict Policy Enforcement:** Password registration mandates a minimum strength score of 3/5, enforcing requirements for at least 8 characters, uppercase letters, lowercase letters, numbers, and special characters.
 * **Real-time Feedback:** A live visual password strength meter provides active feedback to users during the signup phase to promote strong credential habits.
 
@@ -57,6 +59,7 @@ The system prevents brute-force and Denial-of-Service (DoS) vectors using specia
 | **Security/Hashing** | Bcrypt |
 | **QR Generation** | Python `qrcode` + `Pillow` |
 | **Asset Storage** | Base64 Encoding |
+| **Contact Export** | vCard (`.vcf`) Generation |
 | **Remote Access** | SSH (Secure Shell) |
 | **Public Tunneling** | Ngrok |
 
@@ -67,8 +70,8 @@ The system prevents brute-force and Denial-of-Service (DoS) vectors using specia
 The application follows a modular architecture to ensure scalability and ease of maintenance:
 
 1. **Authentication Layer:** Validates user credentials against hashed records before granting session access.
-2. **Logic Layer:** Handles the translation of URLs or text into matricized QR data.
-3. **Data Layer:** Manages relational links between users and their generated assets, ensuring that users only see their own history.
+2. **Logic Layer:** Handles the translation of URLs, images, or text into matricized QR data, and parses QcaRd fields into downloadable vCards.
+3. **Data Layer:** Manages relational links between users and their generated assets, ensuring strict tenant isolation and updating tracking metrics like QcaRd scan counts.
 4. **Networking Layer:**
     * **SSH:** Provides a secure channel for developers to manage the server and database remotely.
     * **Ngrok:** Acts as the ingress point, tunneling the local Streamlit port (8501) to a public URL for external testing and usage.
